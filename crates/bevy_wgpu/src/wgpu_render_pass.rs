@@ -42,7 +42,8 @@ impl<'a> RenderPass for WgpuRenderPass<'a> {
 
     fn set_index_buffer(&mut self, buffer_id: BufferId, offset: u64) {
         let buffer = self.wgpu_resources.buffers.get(&buffer_id).unwrap();
-        self.render_pass.set_index_buffer(buffer.slice(offset..));
+        self.render_pass
+            .set_index_buffer(buffer.slice(offset..), wgpu::IndexFormat::Uint32);
     }
 
     fn draw_indexed(&mut self, indices: Range<u32>, base_vertex: i32, instances: Range<u32>) {

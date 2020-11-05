@@ -86,7 +86,6 @@ impl Default for WgpuBackend {
 #[derive(Clone)]
 pub enum WgpuPowerOptions {
     HighPerformance,
-    Adaptive,
     LowPower,
 }
 

@@ -4,7 +4,8 @@ use bevy_render::{
     pipeline::{
         BlendDescriptor, BlendFactor, BlendOperation, ColorStateDescriptor, ColorWrite,
         CompareFunction, CullMode, DepthStencilStateDescriptor, FrontFace, PipelineDescriptor,
-        RasterizationStateDescriptor, StencilStateDescriptor, StencilStateFaceDescriptor,
+        PolygonMode, RasterizationStateDescriptor, StencilStateDescriptor,
+        StencilStateFaceDescriptor,
     },
     shader::{Shader, ShaderStage, ShaderStages},
     texture::TextureFormat,
@@ -16,6 +17,7 @@ pub const FORWARD_PIPELINE_HANDLE: HandleUntyped =
 pub(crate) fn build_forward_pipeline(shaders: &mut Assets<Shader>) -> PipelineDescriptor {
     PipelineDescriptor {
         rasterization_state: Some(RasterizationStateDescriptor {
+            polygon_mode: PolygonMode::Fill,
             front_face: FrontFace::Ccw,
             cull_mode: CullMode::Back,
             depth_bias: 0,

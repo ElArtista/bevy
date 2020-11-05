@@ -4,14 +4,15 @@ use bevy_render::{
     pipeline::{
         BindType, BlendDescriptor, BlendFactor, BlendOperation, ColorStateDescriptor, ColorWrite,
         CompareFunction, CullMode, DepthStencilStateDescriptor, FrontFace, IndexFormat,
-        InputStepMode, PrimitiveTopology, RasterizationStateDescriptor, StencilOperation,
-        StencilStateDescriptor, StencilStateFaceDescriptor, VertexAttributeDescriptor,
-        VertexBufferDescriptor, VertexFormat,
+        InputStepMode, PolygonMode, PrimitiveTopology, RasterizationStateDescriptor,
+        StencilOperation, StencilStateDescriptor, StencilStateFaceDescriptor,
+        VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
     },
     renderer::BufferUsage,
     texture::{
-        AddressMode, Extent3d, FilterMode, SamplerDescriptor, TextureComponentType,
-        TextureDescriptor, TextureDimension, TextureFormat, TextureUsage, TextureViewDimension,
+        AddressMode, Extent3d, FilterMode, SamplerBorderColor, SamplerDescriptor,
+        TextureComponentType, TextureDescriptor, TextureDimension, TextureFormat, TextureUsage,
+        TextureViewDimension,
     },
 };
 use bevy_window::Window;
@@ -181,46 +182,53 @@ where
 impl WgpuFrom<&BindType> for wgpu::BindingType {
     fn from(bind_type: &BindType) -> Self {
         match bind_type {
-            BindType::Uniform { dynamic, .. } => wgpu::BindingType::UniformBuffer {
-                dynamic: *dynamic,
+            BindType::Uniform { dynamic, .. } => wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: *dynamic,
                 min_binding_size: bind_type.get_uniform_size().and_then(wgpu::BufferSize::new),
             },
-            BindType::StorageBuffer { dynamic, readonly } => wgpu::BindingType::StorageBuffer {
-                dynamic: *dynamic,
-                readonly: *readonly,
+            BindType::StorageBuffer { dynamic, readonly } => wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage {
+                    read_only: *readonly,
+                },
+                has_dynamic_offset: *dynamic,
                 min_binding_size: bind_type.get_uniform_size().and_then(wgpu::BufferSize::new),
             },
             BindType::SampledTexture {
                 dimension,
                 multisampled,
                 component_type,
-            } => wgpu::BindingType::SampledTexture {
-                dimension: (*dimension).wgpu_into(),
+            } => wgpu::BindingType::Texture {
+                view_dimension: (*dimension).wgpu_into(),
                 multisampled: *multisampled,
-                component_type: (*component_type).wgpu_into(),
+                sample_type: (*component_type).wgpu_into(),
             },
             BindType::Sampler { comparison } => wgpu::BindingType::Sampler {
                 comparison: *comparison,
+                filtering: true,
             },
             BindType::StorageTexture {
                 dimension,
                 format,
                 readonly,
             } => wgpu::BindingType::StorageTexture {
-                dimension: (*dimension).wgpu_into(),
+                access: match *readonly {
+                    true => wgpu::StorageTextureAccess::ReadOnly,
+                    false => wgpu::StorageTextureAccess::WriteOnly,
+                },
+                view_dimension: (*dimension).wgpu_into(),
                 format: (*format).wgpu_into(),
-                readonly: *readonly,
             },
         }
     }
 }
 
-impl WgpuFrom<TextureComponentType> for wgpu::TextureComponentType {
+impl WgpuFrom<TextureComponentType> for wgpu::TextureSampleType {
     fn from(texture_component_type: TextureComponentType) -> Self {
         match texture_component_type {
-            TextureComponentType::Float => wgpu::TextureComponentType::Float,
-            TextureComponentType::Sint => wgpu::TextureComponentType::Sint,
-            TextureComponentType::Uint => wgpu::TextureComponentType::Uint,
+            TextureComponentType::Float => wgpu::TextureSampleType::Float { filterable: true },
+            TextureComponentType::Sint => wgpu::TextureSampleType::Sint,
+            TextureComponentType::Uint => wgpu::TextureSampleType::Uint,
         }
     }
 }
@@ -450,6 +458,17 @@ impl WgpuFrom<&RasterizationStateDescriptor> for wgpu::RasterizationStateDescrip
             depth_bias_slope_scale: val.depth_bias_slope_scale,
             depth_bias_clamp: val.depth_bias_clamp,
             clamp_depth: val.clamp_depth,
+            polygon_mode: val.polygon_mode.wgpu_into(),
+        }
+    }
+}
+
+impl WgpuFrom<PolygonMode> for wgpu::PolygonMode {
+    fn from(val: PolygonMode) -> Self {
+        match val {
+            PolygonMode::Fill => wgpu::PolygonMode::Fill,
+            PolygonMode::Line => wgpu::PolygonMode::Line,
+            PolygonMode::Point => wgpu::PolygonMode::Point,
         }
     }
 }
@@ -522,8 +541,8 @@ impl WgpuFrom<IndexFormat> for wgpu::IndexFormat {
     }
 }
 
-impl WgpuFrom<SamplerDescriptor> for wgpu::SamplerDescriptor<'_> {
-    fn from(sampler_descriptor: SamplerDescriptor) -> Self {
+impl WgpuFrom<&SamplerDescriptor> for wgpu::SamplerDescriptor<'_> {
+    fn from(sampler_descriptor: &SamplerDescriptor) -> Self {
         wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: sampler_descriptor.address_mode_u.wgpu_into(),
@@ -536,6 +555,17 @@ impl WgpuFrom<SamplerDescriptor> for wgpu::SamplerDescriptor<'_> {
             lod_max_clamp: sampler_descriptor.lod_max_clamp,
             compare: sampler_descriptor.compare_function.map(|c| c.wgpu_into()),
             anisotropy_clamp: sampler_descriptor.anisotropy_clamp,
+            border_color: sampler_descriptor.border_color.map(|b| b.wgpu_into()),
+        }
+    }
+}
+
+impl WgpuFrom<SamplerBorderColor> for wgpu::SamplerBorderColor {
+    fn from(val: SamplerBorderColor) -> Self {
+        match val {
+            SamplerBorderColor::TransparentBlack => wgpu::SamplerBorderColor::TransparentBlack,
+            SamplerBorderColor::OpaqueBlack => wgpu::SamplerBorderColor::OpaqueBlack,
+            SamplerBorderColor::OpaqueWhite => wgpu::SamplerBorderColor::OpaqueWhite,
         }
     }
 }
@@ -562,7 +592,7 @@ impl WgpuFrom<FilterMode> for wgpu::FilterMode {
 impl WgpuFrom<&Window> for wgpu::SwapChainDescriptor {
     fn from(window: &Window) -> Self {
         wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: TextureFormat::default().wgpu_into(),
             width: window.physical_width(),
             height: window.physical_height(),

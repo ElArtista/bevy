@@ -1,12 +1,14 @@
 use crate::{ColorMaterial, Sprite, TextureAtlas, TextureAtlasSprite};
 use bevy_asset::{Assets, HandleUntyped};
 use bevy_ecs::Resources;
+
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     pipeline::{
         BlendDescriptor, BlendFactor, BlendOperation, ColorStateDescriptor, ColorWrite,
         CompareFunction, CullMode, DepthStencilStateDescriptor, FrontFace, PipelineDescriptor,
-        RasterizationStateDescriptor, StencilStateDescriptor, StencilStateFaceDescriptor,
+        PolygonMode, RasterizationStateDescriptor, StencilStateDescriptor,
+        StencilStateFaceDescriptor,
     },
     render_graph::{base, AssetRenderResourcesNode, RenderGraph, RenderResourcesNode},
     shader::{Shader, ShaderStage, ShaderStages},
@@ -22,6 +24,7 @@ pub const SPRITE_SHEET_PIPELINE_HANDLE: HandleUntyped =
 pub fn build_sprite_sheet_pipeline(shaders: &mut Assets<Shader>) -> PipelineDescriptor {
     PipelineDescriptor {
         rasterization_state: Some(RasterizationStateDescriptor {
+            polygon_mode: PolygonMode::Fill,
             front_face: FrontFace::Ccw,
             cull_mode: CullMode::None,
             depth_bias: 0,
@@ -70,6 +73,7 @@ pub fn build_sprite_sheet_pipeline(shaders: &mut Assets<Shader>) -> PipelineDesc
 pub fn build_sprite_pipeline(shaders: &mut Assets<Shader>) -> PipelineDescriptor {
     PipelineDescriptor {
         rasterization_state: Some(RasterizationStateDescriptor {
+            polygon_mode: PolygonMode::Fill,
             front_face: FrontFace::Ccw,
             cull_mode: CullMode::None,
             depth_bias: 0,

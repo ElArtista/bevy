@@ -18,8 +18,12 @@ use bevy_render::{
 use bevy_utils::tracing::trace;
 use bevy_window::{Window, WindowId};
 use futures_lite::future;
-use std::{borrow::Cow, ops::Range, sync::Arc};
-use wgpu::util::DeviceExt;
+use std::{
+    borrow::Cow,
+    ops::{Bound, Range, RangeBounds},
+    sync::Arc,
+};
+use wgpu::{util::DeviceExt, BufferSize};
 
 #[derive(Clone, Debug)]
 pub struct WgpuRenderResourceContext {
@@ -164,7 +168,7 @@ impl RenderResourceContext for WgpuRenderResourceContext {
     fn create_sampler(&self, sampler_descriptor: &SamplerDescriptor) -> SamplerId {
         let mut samplers = self.resources.samplers.write();
 
-        let descriptor: wgpu::SamplerDescriptor = (*sampler_descriptor).wgpu_into();
+        let descriptor: wgpu::SamplerDescriptor = sampler_descriptor.wgpu_into();
         let sampler = self.device.create_sampler(&descriptor);
 
         let id = SamplerId::new();
@@ -254,7 +258,11 @@ impl RenderResourceContext for WgpuRenderResourceContext {
         let spirv: Cow<[u32]> = shader.get_spirv(None).unwrap().into();
         let shader_module = self
             .device
-            .create_shader_module(wgpu::ShaderModuleSource::SpirV(spirv));
+            .create_shader_module(&wgpu::ShaderModuleDescriptor {
+                label: None,
+                flags: wgpu::ShaderFlags::default(),
+                source: wgpu::ShaderSource::SpirV(spirv),
+            });
         shader_modules.insert(shader_handle.clone_weak(), shader_module);
     }
 
@@ -425,7 +433,7 @@ impl RenderResourceContext for WgpuRenderResourceContext {
                 .as_ref()
                 .map(|d| d.wgpu_into()),
             vertex_state: wgpu::VertexStateDescriptor {
-                index_format: pipeline_descriptor.index_format.wgpu_into(),
+                index_format: Some(pipeline_descriptor.index_format.wgpu_into()),
                 vertex_buffers: &owned_vertex_buffer_descriptors
                     .iter()
                     .map(|v| v.into())
@@ -487,7 +495,23 @@ impl RenderResourceContext for WgpuRenderResourceContext {
                         }
                         RenderResourceBinding::Buffer { buffer, range, .. } => {
                             let wgpu_buffer = buffers.get(&buffer).unwrap();
-                            wgpu::BindingResource::Buffer(wgpu_buffer.slice(range.clone()))
+
+                            let offset = match range.start_bound() {
+                                Bound::Included(&bound) => bound,
+                                Bound::Excluded(&bound) => bound + 1,
+                                Bound::Unbounded => 0,
+                            };
+                            let size = match range.end_bound() {
+                                Bound::Included(&bound) => BufferSize::new(bound + 1 - offset),
+                                Bound::Excluded(&bound) => BufferSize::new(bound - offset),
+                                Bound::Unbounded => None,
+                            };
+
+                            wgpu::BindingResource::Buffer {
+                                buffer: wgpu_buffer,
+                                offset,
+                                size,
+                            }
                         }
                     };
                     wgpu::BindGroupEntry {

@@ -14,7 +14,7 @@ use crate::{
 };
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{ReadOnlyFetch, Resources, World, WorldQuery};
-use bevy_utils::tracing::debug;
+use bevy_utils::tracing::{debug, warn};
 use std::{fmt, marker::PhantomData, ops::Deref};
 
 #[derive(Debug)]
@@ -373,8 +373,31 @@ impl DrawState {
     }
 
     pub fn can_draw(&self) -> bool {
-        self.bind_groups.iter().all(|b| b.is_some())
-            && self.vertex_buffers.iter().all(|v| v.is_some())
+        self.bind_groups
+            .iter()
+            .enumerate()
+            .filter(|(i, b)| {
+                let is_none = b.is_none();
+                if is_none {
+                    warn!("Bind group (GLSL layout set) {} is missing", i);
+                }
+                is_none
+            })
+            .count()
+            == 0
+            && self
+                .vertex_buffers
+                .iter()
+                .enumerate()
+                .filter(|(i, v)| {
+                    let is_none = v.is_none();
+                    if is_none {
+                        warn!("Vertex buffer (GLSL layout location) {} is missing", i);
+                    }
+                    is_none
+                })
+                .count()
+                == 0
     }
 
     pub fn can_draw_indexed(&self) -> bool {

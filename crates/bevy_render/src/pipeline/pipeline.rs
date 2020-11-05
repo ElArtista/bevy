@@ -4,7 +4,7 @@ use super::{
         CompareFunction, CullMode, DepthStencilStateDescriptor, FrontFace, IndexFormat,
         PrimitiveTopology, RasterizationStateDescriptor, StencilStateFaceDescriptor,
     },
-    PipelineLayout, StencilStateDescriptor,
+    PipelineLayout, PolygonMode, StencilStateDescriptor,
 };
 use crate::{shader::ShaderStages, texture::TextureFormat};
 use bevy_reflect::TypeUuid;
@@ -76,6 +76,7 @@ impl PipelineDescriptor {
                 depth_bias_slope_scale: 0.0,
                 depth_bias_clamp: 0.0,
                 clamp_depth: false,
+                polygon_mode: PolygonMode::Fill,
             }),
             depth_stencil_state: Some(DepthStencilStateDescriptor {
                 format: TextureFormat::Depth32Float,

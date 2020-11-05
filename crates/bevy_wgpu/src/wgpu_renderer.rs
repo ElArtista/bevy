@@ -37,7 +37,6 @@ impl WgpuRenderer {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: match options.power_pref {
                     WgpuPowerOptions::HighPerformance => wgpu::PowerPreference::HighPerformance,
-                    WgpuPowerOptions::Adaptive => wgpu::PowerPreference::Default,
                     WgpuPowerOptions::LowPower => wgpu::PowerPreference::LowPower,
                 },
                 compatible_surface: None,
@@ -53,9 +52,9 @@ impl WgpuRenderer {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
+                    label: None,
                     features: wgpu::Features::empty(),
                     limits: wgpu::Limits::default(),
-                    shader_validation: true,
                 },
                 trace_path,
             )

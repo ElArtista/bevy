@@ -97,9 +97,9 @@ impl TaskPool {
     where
         T: 'static,
     {
-        wasm_bindgen_futures::spawn_local(async move {
+        async_executor::LocalExecutor::new().spawn(async move {
             future.await;
-        });
+        }).detach();
         FakeTask
     }
 }
